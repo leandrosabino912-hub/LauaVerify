@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuauVerify - Painel Mobile</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #0f0f12; color: #e1e1e6; padding: 15px; }
+        .container { width: 100%; max-width: 800px; margin: 0 auto; }
+        header { margin-bottom: 20px; text-align: center; border-bottom: 1px solid #29292e; padding-bottom: 15px; }
+        h1 { color: #8257e5; font-size: 22px; margin-bottom: 10px; }
+        .auth-box { display: flex; gap: 8px; justify-content: center; }
+        input { background: #121214; border: 1px solid #29292e; color: #fff; padding: 10px; border-radius: 6px; outline: none; width: 60%; }
+        button { background: #8257e5; color: #fff; border: none; padding: 10px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .card { background: #202024; border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid #29292e; }
+        .card h2 { font-size: 16px; margin-bottom: 12px; color: #a8a8b3; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th, td { padding: 8px; border-bottom: 1px solid #29292e; white-space: nowrap; }
+        th { color: #a8a8b3; }
+        .badge { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .whitelisted { background: #04d36122; color: #04d361; border: 1px solid #04d361; }
+        .blacklisted { background: #f75a6822; color: #f75a68; border: 1px solid #f75a68; }
+        .pending { background: #fba94c22; color: #fba94c; border: 1px solid #fba94c; }
+        .btn-wl { background: #04d361; padding: 5px 8px; font-size: 11px; margin-right: 4px; }
+        .btn-bl { background: #f75a68; padding: 5px 8px; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔒 LuauVerify Mobile</h1>
+            <div class="auth-box">
+                <input type="password" id="adminKey" placeholder="Senha Admin...">
+                <button onclick="loadData()">Entrar</button>
+            </div>
+        </header>
+
+        <div class="card">
+            <h2>Gerenciamento de Contas</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuário</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable">
+                        <tr><td colspan="3" style="text-align:center;">Digite a senha acima.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Logs de Execução</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuário</th>
+                            <th>Place ID</th>
+                            <th>Executor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTable">
+                        <tr><td colspan="3" style="text-align:center;">Aguardando login.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            const key = document.getElementById('adminKey').value;
+            try {
+                const res = await fetch('/api/admin/data', { headers: { 'x-admin-key': key } });
+                if (!res.ok) throw new Error("Senha errada!");
+                const data = await res.json();
+                renderUsers(data.users);
+                renderLogs(data.logs);
+            } catch (err) { alert(err.message); }
+        }
+
+        function renderUsers(users) {
+            document.getElementById('usersTable').innerHTML = users.map(u => `
+                <tr>
+                    <td><b>${u.username}</b><br><small style="color:#737380">${u.userId}</small></td>
+                    <td><span class="badge ${u.status}">${u.status}</span></td>
+                    <td>
+                        <button class="btn-wl" onclick="setStatus('${u.userId}', 'whitelisted')">WL</button>
+                        <button class="btn-bl" onclick="setStatus('${u.userId}', 'blacklisted')">BL</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderLogs(logs) {
+            document.getElementById('logsTable').innerHTML = logs.map(l => `
+                <tr>
+                    <td><b>${l.username}</b></td>
+                    <td>${l.placeId}</td>
+                    <td>${l.executor}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function setStatus(userId, status) {
+            const key = document.getElementById('adminKey').value;
+            await fetch('/api/admin/set-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+                body: JSON.stringify({ userId, status })
+            });
+            loadData();
+        }
+    </script>
+</body>
+</html>
